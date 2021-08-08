@@ -1,35 +1,9 @@
 import numpy as np
 import pandas as pd
 import os
+import sys
 
 
-#splits CSV into multiple CSVs based on row length
-def split(filehandler, delimiter=',', row_limit=499,
-          output_name_template='output_%s.csv', output_path='.', keep_headers=True):
-    import csv
-    reader = csv.reader(filehandler, delimiter=delimiter)
-    current_piece = 1
-    current_out_path = os.path.join(
-        output_path,
-        output_name_template % current_piece
-    )
-    current_out_writer = csv.writer(open(current_out_path, 'w'), delimiter=delimiter)
-    current_limit = row_limit
-    if keep_headers:
-        headers =next(reader)
-        current_out_writer.writerow(headers)
-    for i, row in enumerate(reader):
-        if i + 1 > current_limit:
-            current_piece += 1
-            current_limit = row_limit * current_piece
-            current_out_path = os.path.join(
-                output_path,
-                output_name_template % current_piece
-            )
-            current_out_writer = csv.writer(open(current_out_path, 'w'), delimiter=delimiter)
-            if keep_headers:
-                current_out_writer.writerow(headers)
-        current_out_writer.writerow(row)
 
 
 
@@ -57,9 +31,56 @@ def gettissuelist(rawfilename):
     listx=df["Tissue"].unique();
     return (listx);
 
+
+def uniquepeptidecheck():
+    df = pd.read_csv("lungpeptides.csv", sep=',')
+    df2 = pd.read_csv("normalpeptides.csv", sep='\t',names=["peptide", "core", "icore", "score"]);
+    #usecols=["peptide"];
+    #df.columns=df["peptide"];
+    lungpeptides=df["peptide"].tolist()
+    normalpeptides=df2["peptide"].tolist()
+    uniquepeptides = [];
+    #cancerpeptides=['ALQPFPAPV', 'SQVEKLVRV', 'YLXXXXXLL'];
+    for i in lungpeptides :
+    	if i in normalpeptides:
+    		a=10;
+    	else:
+    		uniquepeptides.append(i);
+    filtereduniquepeptides=[];
+    p=0;  		
+    for i in normalpeptides:
+    	for j in uniquepeptides:
+    		score=0;
+	    	for x in range(9):
+	    		if i[x] == j[x]:
+	    			score=score+1;
+	    	p=p+1;
+	    	print(score);
+	    	if score < 5:
+	    		filtereduniquepeptides.append(j);
+    	
+    
+    		
+    	#print(uniquepeptides[i]);	
+    #print(listy);
+    #print(df2);
+    print(filtereduniquepeptides[0]);
+    print(p)
+    print(filtereduniquepeptides[1]);
+    print (len(filtereduniquepeptides));
+    
+    		
+
+	
+uniquepeptidecheck()
+
+
+
+
+
 #processes fasta file and makes all changes so that file is ready for IEDB processing.
 def processfasta():
-    df = pd.read_csv("output.csv", sep='\t', header=None)
+    df = pd.read_csv("b.csv", sep='\t', header=None)
     df.columns = ["Gene name", "Sequence"]
     df.to_csv('output1.csv') ;
     listy=df["Gene name"].tolist()
@@ -78,7 +99,7 @@ def processfasta():
         if aminoacid == "U":
             listnumbersu.append(i);
             break;
-
+	
 
     f = open("modified.txt", "w")
     f.write("Modified X")
@@ -119,12 +140,13 @@ def processfasta():
     df.to_csv('filex.fasta', sep="\n" ,header=False, index=False) ;
 
 #converts fasta to csv
-def fasta2csv(fastafilename):
+def fasta2csv():
     count=0;
     header="";
     seq="";
-    f=open(fastafilename,"r");
-    f1 = open("op.csv", "a");
+    f=open("b.fasta","r");
+    f1 = open("b.csv", "a");
+    f1.write("Gene name"+"\t"+"Sequence"+"\n")
     for line in f:
         line=line.replace("\n", "")
         if str(line).startswith(">"):
@@ -169,13 +191,65 @@ def filtergenes(tissuelist):
     return("new files and filtered_normal_tissue.tsv created ")
 
 
-tissuelist=["breast","bronchus","bone marrow",'cerebellum','cerebral cortex','cervix, uterine','colon','duodenum','epididymis','esophagus','fallopian tube','gallbladder','heart muscle','kidney','liver','lung','ovary','pancreas','placenta','prostate','skeletal muscle','spleen','stomach 1','stomach 2','thyroid gland','urinary bladder','pituitary gland']
-print(filtergenes(tissuelist))
+
+#splits CSV into multiple CSVs based on row length
+#use like split(open('/your/pat/input.csv', 'r'));
+def split(filehandler, delimiter=',', row_limit=499,
+          output_name_template='output_%s.csv', output_path='.', keep_headers=True):
+    import csv
+    reader = csv.reader(filehandler, delimiter=delimiter)
+    current_piece = 1
+    current_out_path = os.path.join(
+        output_path,
+        output_name_template % current_piece
+    )
+    
+    current_out_writer = csv.writer(open(current_out_path, 'w'), delimiter=delimiter)
+    current_limit = row_limit
+    if keep_headers:
+        headers =next(reader)
+        current_out_writer.writerow(headers)
+    for i, row in enumerate(reader):
+        if i + 1 > current_limit:
+            current_piece += 1
+            current_limit = row_limit * current_piece
+            current_out_path = os.path.join(
+                output_path,
+                output_name_template % current_piece
+            )
+            current_out_writer = csv.writer(open(current_out_path, 'w'), delimiter=delimiter)
+            if keep_headers:
+                current_out_writer.writerow(headers)
+        current_out_writer.writerow(row)
 
 
 
+def removedups():
+
+    df =pd.read_csv('alltranscripts.csv',sep='\t' ,engine='python')
+    df.drop_duplicates(keep=False,inplace=True) 
+    df.to_csv('newalltranscripts.csv', sep="\n" ,header=False, index=False) ;
+
+def csvminuscsv():
+    df_1 =pd.read_csv('filtered_cancer_tissue.csv',sep='\t' ,engine='python')
+    df2 =pd.read_csv('filtered_normal_tissue.csv',sep='\t' ,engine='python')
+    test_list=df_1.values.tolist()
+    remove_list=df2.values.tolist()
+    res = [i for i in test_list if i not in remove_list]
+    print(len(test_list))
+    print(len(remove_list))    
+    print (len(res))
+    f=open("uniquegenes.csv", "a+")
+    for i in res:
+        for j in i:
+            f.write(str(j)+"\n")
+    f.close()
+        
 
 
 
-
+#tissuelist=["breast","bronchus","bone marrow",'cerebellum','cerebral cortex','cervix, uterine','colon','duodenum','epididymis','esophagus','fallopian tube','gallbladder','heart muscle','kidney','liver','lung','ovary','pancreas','placenta','prostate','skeletal muscle','spleen','stomach 1','stomach 2','thyroid gland','urinary bladder','pituitary gland']
+#print(csvminuscsv())
+#fasta2csv()
+#processfasta()
 
